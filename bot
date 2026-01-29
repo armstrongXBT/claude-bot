@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""
+Claude-inspired scheduled Twitter/X bot (minimal).
+Set environment variables from .env or system env.
+"""
+import os
+import logging
+import random
+from apscheduler.schedulers.blocking import BlockingScheduler
+from dotenv import load_dotenv
+import tweepy
+
+# Load .env in dev
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("claude-bot")
+
+# Credentials
+API_KEY = os.getenv("TWITTER_API_KEY")
+API_SECRET = os.getenv("TWITTER_API_SECRET")
+ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+INTERVAL_MINUTES = int(os.getenv("POST_INTERVAL_MINUTES", "60"))
+DISCLOSURE = os.getenv("DISCLOSURE", "(inspired-by Claude) ")
+
+if not all([API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET]):
+    log.error("Missing one or more Twitter credentials in environment variables.")
+    raise SystemExit(1)
+
+# Tweepy client (OAuth 1.0a user context)
+client = tweepy.Client(consumer_key=API_KEY,
+                       consumer_secret=API_SECRET,
+                       access_token=ACCESS_TOKEN,
+                       access_token_secret=ACCESS_SECRET,
+                       wait_on_rate_limit=True)
+
+# Import the curated messages
+from messages_claude import MESSAGES
+
+def create_tweet_text() -> str:
+    base = random.choice(MESSAGES)
+    # Ensure disclosure + message fits in 280 chars
+    text = (DISCLOSURE + " " + base).strip()
+    return text[:280]
+
+def post_tweet():
+    text = create_tweet_text()
+    if not text:
+        log.warning("Empty tweet text; skipping.")
+        return
+    try:
+        resp = client.create_tweet(text=text)
+        tweet_id = None
+        if resp and getattr(resp, "data", None):
+            tweet_id = resp.data.get("id")
+        log.info("Posted tweet id=%s text=%r", tweet_id, text)
+    except Exception as e:
+        # Be conservative on error information logged; do not leak secrets
+        log.exception("Failed to post tweet: %s", str(e))
+
+if __name__ == "__main__":
+    log.info("Starting Claude-inspired scheduler: posting every %d minute(s).", INTERVAL_MINUTES)
+    scheduler = BlockingScheduler()
+    scheduler.add_job(post_tweet, "interval", minutes=INTERVAL_MINUTES, id="post_tweet", next_run_time=None)
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        log.info("Shutting down scheduler.")
