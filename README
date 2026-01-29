@@ -1,0 +1,28 @@
+# Claude‑inspired Scheduled Tweet Bot
+
+This repository contains a simple scheduled Twitter/X bot that posts short, calm, helpful, tech-focused messages inspired by a safety-first assistant voice.
+
+Important: Tweets are "inspired-by" the assistant voice. Do NOT impersonate Claude or Anthropic. Include a visible disclosure in your account bio and in tweets (the bot prepends a short disclosure by default).
+
+Quickstart
+1. Create a Twitter/X developer app and obtain API credentials.
+2. Create a `.env` from `.env.example` and fill in credentials.
+3. Install dependencies:
+   - python -m venv venv && source venv/bin/activate
+   - pip install -r requirements.txt
+4. Run locally:
+   - python bot.py
+5. (Optional) Build and run with Docker:
+   - docker build -t claude-bot .
+   - docker run --env-file .env claude-bot
+
+Configuration
+- POST_INTERVAL_MINUTES: scheduling frequency (default 60)
+- DISCLOSURE: short prefix added to each tweet (default: "(inspired-by Claude) ")
+
+Notes
+- Test on a throwaway account before posting from a main account.
+- Store secrets in environment variables or a secrets manager — never commit them.
+- Respect platform automation rules and rate limits.
+
+License: MIT
